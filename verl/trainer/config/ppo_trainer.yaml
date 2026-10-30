@@ -1,0 +1,375 @@
+data:
+  tokenizer: null
+  use_shm: False
+  train_files: ~/data/rlhf/gsm8k/train.parquet
+  val_files: ~/data/rlhf/gsm8k/test.parquet
+  prompt_key: prompt
+  reward_fn_key: data_source
+  max_prompt_length: 512
+  max_response_length: 512
+  train_batch_size: 1024
+  val_batch_size: null
+  return_raw_input_ids: False  # This should be set to true when the tokenizer between policy and rm differs
+  return_raw_chat: False
+  return_full_prompt: False
+  shuffle: True
+  filter_overlong_prompts: False # for large-scale dataset, filtering overlong prompts could be timeconsuming. You cat set the filter_overlong_prompts_workers to use multiprocessing to speed up.
+  filter_overlong_prompts_workers: 1
+  truncation: error
+  image_key: images
+  video_key: videos
+  trust_remote_code: False  # main_ppo will check this config to determine whether to use remote code for tokenizer
+  custom_cls:
+      path: null
+      name: null
+
+actor_rollout_ref:
+  hybrid_engine: True
+  model:
+    path: ~/models/deepseek-llm-7b-chat
+    use_shm: False
+    external_lib: null
+    override_config: { }
+    enable_gradient_checkpointing: True
+    enable_activation_offload: False
+    use_remove_padding: False
+    lora_rank: 0  # Set to positive value to enable LoRA (e.g., 32)
+    lora_alpha: 16  # LoRA scaling factor
+    target_modules: all-linear  # all-linear or [q_proj,k_proj,v_proj,o_proj,gate_proj,up_proj,down_proj]
+    use_liger: False
+    use_fused_kernels: False
+    trust_remote_code: False
+  actor:
+    strategy: fsdp  # [fsdp, fsdp2], This is for backward-compatibility
+    tarp_train_mode: baseline  # [baseline, continual]
+    use_ewc_loss: False
+    ewc_mode: DIAG_FISHER
+    ewc_lambda: 0.0
+    ewc_root: /path/to/outputs/ewc
+    ewc_dir: null
+    ewc_tag: null
+    ewc_load_path: null
+    ewc_dataset_key: null
+    ewc_export_only: False
+    ewc_target_valid_samples: 32
+    ewc_n_traj: 1
+    ewc_max_new_tokens: 512
+    ewc_max_fisher_seq_len: 1024
+    ewc_skip_overlong_fisher_seq: False
+    ewc_store_dtype: bfloat16
+    ewc_state_debug_on_load: True
+    tarp_mode: TARP
+    tarp_lambda: 0.0
+    tarp_root: /path/to/outputs/anchor
+    tarp_model_size: null
+    tarp_dataset_key: null
+    tarp_load_dataset_key: null  # null means no dataset-key lookup; explicit tarp_dir/tarp_tag still take precedence
+    tarp_load_dir: null
+    tarp_load_tag: null
+    tarp_dir: null
+    tarp_tag: null
+    tarp_export_only: False
+    online_tarp: False  # when True, export after every continual stage and consolidate into a single prior
+    tarp_online_decay: 1.0
+    tarp_export_after_train: True
+    tarp_param_view: orig
+    tarp_target_valid_samples: 32
+    tarp_n_traj: 4
+    tarp_min_correct_ratio: 0.5
+    tarp_min_correct_count: 1
+    tarp_anchor_strategy: consensus  # [first, best_score, consensus]
+    tarp_sem_metric: hybrid  # [lexical, embedding, hybrid]
+    tarp_sem_metric_export: lexical  # used when tarp_export_only and tarp_fisher_fast_export are both True
+    tarp_sem_hybrid_alpha: 0.5  # lexical weight in hybrid mode
+    tarp_sem_fallback: 0.2
+    tarp_fisher_fast_export: False
+    tarp_fisher_generate_use_cache: null  # null => auto (True in tarp_export_only mode)
+    tarp_fisher_max_n_traj_export: 1
+    tarp_fisher_max_new_tokens_export: 512
+    tarp_fisher_max_seq_len_export: 1024
+    tarp_fisher_deterministic_export: True
+    tarp_fisher_allow_weak_samples_export: False
+    tarp_fisher_weak_min_score_export: 0.0
+    tarp_sync_sampling_across_ranks: null  # null => auto (True for distributed stochastic tarp_export_only runs)
+    tarp_sync_sampling_base_seed: 0
+    tarp_reasoning_cache_enabled: null  # null => auto (True when tarp_export_only=True)
+    tarp_reasoning_cache_path: null  # null => <tarp_dir>/<tarp_tag>__reasoning_cache__rank-{rank}-of-{world}.jsonl
+    tarp_reasoning_cache_key_fields: index,task_id,id,sample_id,uid
+    tarp_reasoning_cache_version: v1
+    tarp_use_stability_weight: False  # ignored in current consistency-only TARP weighting path
+    tarp_stability_power: 1.0
+    tarp_use_line_type_weight: True
+    tarp_use_tail_bias: True
+    tarp_line_weight_math_step: 1.0
+    tarp_line_weight_search_control: 0.3
+    tarp_line_weight_filler: 0.05
+    tarp_tail_head_weight: 0.8
+    tarp_tail_tail_weight: 1.2
+    tarp_kk_line_weight_logic_step: 1.0
+    tarp_kk_line_weight_consistency_check: 0.8
+    tarp_kk_line_weight_statement_focus: 0.55
+    tarp_kk_line_weight_summary: 0.3
+    tarp_kk_line_weight_filler: 0.1
+    tarp_kk_tail_head_weight: 0.9
+    tarp_kk_tail_tail_weight: 1.1
+    tarp_max_new_tokens: 1024
+    tarp_max_fisher_seq_len: 1024
+    tarp_skip_overlong_fisher_seq: False
+    tarp_progress_log_interval: 20
+    tarp_skip_detail_log_limit: 200
+    tarp_stage_log_interval: 10
+    tarp_answer_span_weight: 1.0
+    tarp_answer_tag_weight: 1.0
+    tarp_debug_print_limit: 20
+    tarp_penalty_debug: True
+    tarp_penalty_debug_interval: 1
+    tarp_penalty_debug_top_layers: 3
+    tarp_penalty_debug_delta_layers: 3
+    tarp_skip_zero_penalty_grad: True
+    tarp_state_debug_on_load: True
+    tarp_normalize_proj_columns: True
+    tarp_average_over_proj_dim: True
+    tarp_rank_per_block: 32
+    tarp_block_size: 2048
+    tarp_proj_dim: 48
+    tarp_warmup_steps: 600
+    tarp_disable_when_pg_small: True
+    tarp_pg_loss_floor: 1.0e-8
+    tarp_to_pg_ratio_cap: 0  # cap TARP-to-PG ratio to stabilize continual updates
+    tarp_penalty_cap: 0.0
+    ppo_mini_batch_size: 256
+    ppo_micro_batch_size: null # will be deprecated, use ppo_micro_batch_size_per_gpu
+    ppo_micro_batch_size_per_gpu: null
+    use_dynamic_bsz: False
+    ppo_max_token_len_per_gpu: 16384 # n * ${data.max_prompt_length} + ${data.max_response_length}
+    grad_clip: 1.0
+    # pg_losses2 = -advantages * torch.clamp(ratio, 1 - cliprange_low, 1 + cliprange_high)
+    clip_ratio: 0.2 # default value if clip_ratio_low and clip_ratio_high are not specified
+    clip_ratio_low: 0.2
+    clip_ratio_high: 0.2
+    clip_ratio_c: 3.0 # lower bound of the value for Dual-clip PPO from https://arxiv.org/pdf/1912.09729
+    loss_agg_mode: "token-mean" # / "seq-mean-token-sum" / "seq-mean-token-mean"
+    entropy_coeff: 0
+    use_kl_loss: False # True for GRPO
+    use_torch_compile: True # False to disable torch compile
+    kl_loss_coef: 0.001 # for grpo
+    kl_loss_type: low_var_kl # for grpo
+    ppo_epochs: 1
+    shuffle: False
+    ulysses_sequence_parallel_size: 1 # sp size
+    checkpoint:
+      contents: ['model', 'optimizer', 'extra']  # with 'hf_model' you can save whole model as hf format, now only use sharded model checkpoint to save space
+    optim:
+      lr: 1e-6
+      lr_warmup_steps: -1 # Prioritized. Negative values mean delegating to lr_warmup_steps_ratio.
+      lr_warmup_steps_ratio: 0.  # the total steps will be injected during runtime
+      min_lr_ratio: 0.0   # only used with cosine lr scheduler, default to 0.0
+      num_cycles: 0.5     # only used with cosine lr scheduler, default to 0.5
+      warmup_style: constant  # select from constant/cosine
+      total_training_steps: -1  # must be override by program
+      weight_decay: 0.01
+    fsdp_config:
+      wrap_policy:
+        # transformer_layer_cls_to_wrap: None
+        min_num_params: 0
+      param_offload: False
+      optimizer_offload: False
+      offload_policy: False # only for fsdp2, offload param\grad\optimizer during train
+      reshard_after_forward: True # only for fsdp2, [True, False, int between 1 and fsdp_size]
+      fsdp_size: -1
+  ref:
+    strategy: fsdp
+    fsdp_config:
+      param_offload: False
+      reshard_after_forward: True # only for fsdp2, [True, False, int between 1 and fsdp_size]
+      wrap_policy:
+        # transformer_layer_cls_to_wrap: None
+        min_num_params: 0
+    use_torch_compile: ${actor_rollout_ref.actor.use_torch_compile}
+    log_prob_micro_batch_size: null # will be deprecated, use log_prob_micro_batch_size_per_gpu
+    log_prob_micro_batch_size_per_gpu: null
+    log_prob_use_dynamic_bsz: ${actor_rollout_ref.actor.use_dynamic_bsz}
+    log_prob_max_token_len_per_gpu: ${actor_rollout_ref.actor.ppo_max_token_len_per_gpu}
+    ulysses_sequence_parallel_size: ${actor_rollout_ref.actor.ulysses_sequence_parallel_size} # sp size
+  rollout:
+    name: vllm
+    mode: sync # sync: LLM, async: AsyncLLM
+    chat_scheduler: null # async chat scheduler, e.g examples.ppo_trainer.naive_chat_scheduler.NaiveChatCompletionScheduler
+    temperature: 1.0
+    top_k: -1 # 0 for hf rollout, -1 for vllm rollout
+    top_p: 1
+    force_answer_stop: False  # when True, append </answer> as a stop string and keep it in output
+    use_fire_sampling: False # https://arxiv.org/abs/2410.21236
+    prompt_length: ${data.max_prompt_length}  # not use for opensource
+    response_length: ${data.max_response_length}
+    # for vllm rollout
+    dtype: bfloat16 # should align with FSDP
+    gpu_memory_utilization: 0.5
+    ignore_eos: False
+    enforce_eager: True
+    free_cache_engine: True
+    load_format: dummy_dtensor  # safetensors (for huge model, and set use_shm=True); dummy_dtensor: randomly init model weight
+    layered_summon: False # for huge model, layered summon can save memory (prevent OOM) but make it slower
+    tensor_model_parallel_size: 2
+    max_num_batched_tokens: 8192
+    max_model_len: null
+    max_num_seqs: 1024
+    log_prob_micro_batch_size: null # will be deprecated, use log_prob_micro_batch_size_per_gpu
+    log_prob_micro_batch_size_per_gpu: null
+    log_prob_use_dynamic_bsz: ${actor_rollout_ref.actor.use_dynamic_bsz}
+    log_prob_max_token_len_per_gpu: ${actor_rollout_ref.actor.ppo_max_token_len_per_gpu}
+    disable_log_stats: True
+    enable_chunked_prefill: True # may get higher throughput when set to True. When activated, Please increase max_num_batched_tokens or decrease max_model_len.
+    # for hf rollout
+    do_sample: True
+    # number of responses (i.e. num sample times)
+    n: 1 # > 1 for grpo
+    engine_kwargs: # inference engine parameters
+      vllm:
+        swap_space: null # null means "use the engine default value" (usually 4 GB), setting it to, e.g., 32 means 32 GB
+      sglang:
+        attention_backend: null # null means use the engine default value, available options: flashinfer, triton, flashmla
+    val_kwargs:
+      # sampling parameters for validation
+      top_k: -1 # 0 for hf rollout, -1 for vllm rollout
+      top_p: 1.0
+      temperature: 0
+      n: 1
+      do_sample: False # default eager for validation
+    multi_turn:
+      enable: False  # set to True for multi-turn tool interaction tasks; should set rollout.name to sglang as well
+      max_turns: null  # null for no limit (default max_length // 3)
+      tool_config_path: null  # null for no tool
+      format: chatml  # chatml, more formats will be supported in the future
+
+critic:
+  rollout_n: ${actor_rollout_ref.rollout.n}
+  strategy: fsdp # [fsdp, fsdp2]
+  optim:
+    lr: 1e-5
+    lr_warmup_steps_ratio: 0.  # the total steps will be injected during runtime
+    min_lr_ratio: null   # only useful for warmup with cosine
+    warmup_style: constant  # select from constant/cosine
+    total_training_steps: -1  # must be override by program
+    weight_decay: 0.01
+  model:
+    path: ~/models/deepseek-llm-7b-chat
+    use_shm: False
+    tokenizer_path: ${actor_rollout_ref.model.path}
+    override_config: { }
+    external_lib: ${actor_rollout_ref.model.external_lib}
+    enable_gradient_checkpointing: True
+    enable_activation_offload: False
+    use_remove_padding: False
+    trust_remote_code: ${actor_rollout_ref.model.trust_remote_code}
+    fsdp_config:
+      param_offload: False
+      optimizer_offload: False
+      offload_policy: False # only for fsdp2, offload param\grad\optimizer during train
+      reshard_after_forward: True # only for fsdp2, [True, False, int between 1 and fsdp_size]
+      wrap_policy:
+        # transformer_layer_cls_to_wrap: None
+        min_num_params: 0
+      fsdp_size: -1
+    lora_rank: 0  # Set to positive value to enable LoRA (e.g., 32)
+    lora_alpha: 16  # LoRA scaling factor
+    target_modules: all-linear  # all-linear or [q_proj,k_proj,v_proj,o_proj,gate_proj,up_proj,down_proj]
+  ppo_mini_batch_size: ${actor_rollout_ref.actor.ppo_mini_batch_size}
+  ppo_micro_batch_size: null # will be deprecated, use ppo_micro_batch_size_per_gpu
+  ppo_micro_batch_size_per_gpu: null
+  forward_micro_batch_size: ${critic.ppo_micro_batch_size}
+  forward_micro_batch_size_per_gpu: ${critic.ppo_micro_batch_size_per_gpu}
+  use_dynamic_bsz: ${actor_rollout_ref.actor.use_dynamic_bsz}
+  ppo_max_token_len_per_gpu: 32768 # (${actor_rollout_ref.actor.ppo_max_token_len_per_gpu}) * 2
+  forward_max_token_len_per_gpu: ${critic.ppo_max_token_len_per_gpu}
+  ulysses_sequence_parallel_size: 1 # sp size
+  ppo_epochs: ${actor_rollout_ref.actor.ppo_epochs}
+  shuffle: ${actor_rollout_ref.actor.shuffle}
+  grad_clip: 1.0
+  cliprange_value: 0.5
+  loss_agg_mode: ${actor_rollout_ref.actor.loss_agg_mode}
+  checkpoint:
+    contents: ['model', 'optimizer', 'extra']  # with 'hf_model' you can save whole model as hf format, now only use sharded model checkpoint to save space
+
+reward_model:
+  enable: False
+  strategy: fsdp
+  model:
+    input_tokenizer: ${actor_rollout_ref.model.path}  # set this to null if the chat template is identical
+    path: ~/models/FsfairX-LLaMA3-RM-v0.1
+    use_shm: False
+    external_lib: ${actor_rollout_ref.model.external_lib}
+    use_remove_padding: False
+    use_fused_kernels: ${actor_rollout_ref.model.use_fused_kernels}
+    trust_remote_code: False
+    fsdp_config:
+      wrap_policy:
+        min_num_params: 0
+      param_offload: False
+      reshard_after_forward: True # only for fsdp2, [True, False, int between 1 and fsdp_size]
+      fsdp_size: -1
+  micro_batch_size: null # will be deprecated, use micro_batch_size_per_gpu
+  micro_batch_size_per_gpu: null # set a number
+  max_length: null
+  ulysses_sequence_parallel_size: 1 # sp size
+  use_dynamic_bsz: ${critic.use_dynamic_bsz}
+  forward_max_token_len_per_gpu: ${critic.forward_max_token_len_per_gpu}
+  reward_manager: naive
+  launch_reward_fn_async: False # custom reward function executed async on CPU, during log_prob
+  sandbox_fusion:
+    url: null # faas url to run code in cloud sandbox
+    max_concurrent: 64 # max concurrent requests to sandbox
+custom_reward_function:
+  path: null
+  name: compute_score
+
+algorithm:
+  gamma: 1.0
+  lam: 1.0
+  adv_estimator: gae
+  norm_adv_by_std_in_grpo: True
+  use_kl_in_reward: False
+  kl_penalty: kl  # how to estimate kl divergence
+  kl_ctrl:
+    type: fixed
+    kl_coef: 0.001
+    horizon: 10000
+    target_kl: 0.1
+  use_pf_ppo: False
+  pf_ppo:
+    reweight_method: pow  # ["pow", "max_min", "max_random"]
+    weight_pow: 2.0
+
+trainer:
+  balance_batch: True
+  total_epochs: 30
+  total_training_steps: null
+  project_name: verl_examples
+  experiment_name: gsm8k
+  logger: [ 'console' ]
+  log_val_generations: 0
+  rollout_data_dir: null # directory for logging the rollout data, no dump if null
+  validation_data_dir: null # directory for logging the validation data, no dump if null
+  nnodes: 1
+  n_gpus_per_node: 8
+  save_freq: -1
+  # auto: find the last ckpt to resume. If can't find, start from scratch
+  resume_mode: auto # or disable or resume_path if resume_from_path is set
+  resume_from_path: null
+  val_before_train: True
+  test_freq: -1
+  critic_warmup: 0
+  tarp_export_only: False
+  ewc_export_only: False
+  default_hdfs_dir: null
+  del_local_ckpt_after_load: False
+  default_local_dir: checkpoints/${trainer.project_name}/${trainer.experiment_name}
+  max_actor_ckpt_to_keep: null
+  max_critic_ckpt_to_keep: null
+  # The timeout for ray worker group to wait for the register center to be ready
+  ray_wait_register_center_timeout: 300
+  device: cuda
+
+ray_init:
+  num_cpus: null # `None` means using all CPUs, which might cause hang if limited in systems like SLURM. Please set to a number allowed then.
+  timeline_json_file: null
