@@ -18,13 +18,17 @@ name = "verl"
 # The actual version is specified in the [tool.setuptools.dynamic] section below.
 dynamic = ["version"]
 
-description = "Anonymous submission code for multi-domain reinforcement learning experiments"
+description = "Official implementation of TARP for retaining stepwise reasoning in sequential reinforcement learning"
 license = {text = "Apache-2.0"}
 readme = {file = "README.md", content-type = "text/markdown"}
 requires-python = ">=3.10,<3.11"
 
 authors = [
-  { name = "Anonymous Submission" },
+  { name = "Wei Li" },
+  { name = "Tao Feng" },
+  { name = "Hangjie Yuan" },
+  { name = "Aojun Lu" },
+  { name = "Yanan Sun" },
 ]
 
 # Dependencies corresponding to install_requires in setup.py

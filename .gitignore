@@ -1,0 +1,33 @@
+# Python caches and local environments
+__pycache__/
+*.py[cod]
+*.egg-info/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.venv/
+venv/
+
+# Local editor and operating-system files
+.DS_Store
+.idea/
+.vscode/
+
+# Experiment outputs (never part of the source release)
+checkpoints/
+outputs/
+results/
+runs/
+wandb/
+validation_samples/
+training_samples/
+*.log
+*.jsonl
+
+# Runtime scratch and generated model artifacts
+runtime/
+tmp/
+*.pt
+*.pth
+*.ckpt
+*.safetensors

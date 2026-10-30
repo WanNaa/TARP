@@ -61,6 +61,7 @@ set_preset_defaults() {
     DEFAULT_MODEL_ENV="qwen_ins"
     DEFAULT_MODEL_TAG_PREFIX=""
     DEFAULT_PIPELINE_NAME_TAG=""
+    DEFAULT_PRESET_LR="5e-6"
     case "$PIPELINE_PRESET" in
         qwen_3b_baseline)
             PIPELINE_MODE="baseline"
@@ -68,6 +69,7 @@ set_preset_defaults() {
             DEFAULT_STAGE_ORDER="CD KK R1"
             DEFAULT_EXPERIMENT_PREFIX="EXP1-3B"
             DEFAULT_FORCE_ANSWER_STOP_TRAIN="False"
+            DEFAULT_PRESET_LR="1e-6"
             ;;
         qwen_3b_tarp)
             PIPELINE_MODE="tarp"
@@ -75,6 +77,7 @@ set_preset_defaults() {
             DEFAULT_STAGE_ORDER="CD KK R1"
             DEFAULT_EXPERIMENT_PREFIX="EXP1-3B"
             DEFAULT_FORCE_ANSWER_STOP_TRAIN="True"
+            DEFAULT_PRESET_LR="1e-6"
             ;;
         llama_3b_baseline)
             PIPELINE_MODE="baseline"
@@ -329,7 +332,7 @@ run_math_and_code() {
         export VLLM_ATTENTION_BACKEND="$VLLM_ATTENTION_BACKEND"
         export LOG_FILE="$output_log"
         export PROJECT_NAME="$PROJECT_NAME"
-        export PPO_MICRO_BATCH_SIZE="$PPO_MICRO_BATCH_SIZE"
+        export PPO_MICRO_BATCH_SIZE="${STAGE_PPO_MICRO_BATCH_SIZE[$stage]}"
         export PPO_MINI_BATCH_SIZE="$PPO_MINI_BATCH_SIZE"
         export TRAIN_BATCH_SIZE="$TRAIN_BATCH_SIZE"
         export EPOCHS="$steps"
@@ -813,6 +816,8 @@ if (( $# > 0 )); then
     esac
 fi
 
+tarp_prepare_runtime_dirs
+
 PIPELINE_PRESET="${PIPELINE_PRESET:-}"
 if [[ -z "$PIPELINE_PRESET" ]] && (( $# > 0 )); then
         if normalized="$(normalize_preset "$1" 2>/dev/null)"; then
@@ -919,7 +924,7 @@ VAL_BEFORE_TRAIN="${VAL_BEFORE_TRAIN:-False}"
 SAVE_FREQ="${SAVE_FREQ:-25}"
 # SAVE_FREQ="${SAVE_FREQ:-50}"
 TEST_FREQ="${TEST_FREQ:--1}"
-DEFAULT_LR="${DEFAULT_LR:-5e-6}"
+DEFAULT_LR="${DEFAULT_LR:-$DEFAULT_PRESET_LR}"
 
 STOP_RAY_BEFORE_STAGE="${STOP_RAY_BEFORE_STAGE:-0}"
 START_FRESH="${START_FRESH:-0}"
@@ -953,6 +958,12 @@ declare -A STAGE_LR=(
     [CD]="${CD_LR:-$DEFAULT_LR}"
     [KK]="${KK_LR:-$DEFAULT_LR}"
     [R1]="${R1_LR:-$DEFAULT_LR}"
+)
+
+declare -A STAGE_PPO_MICRO_BATCH_SIZE=(
+    [CD]="${CD_PPO_MICRO_BATCH_SIZE:-$PPO_MICRO_BATCH_SIZE}"
+    [KK]="${KK_PPO_MICRO_BATCH_SIZE:-$PPO_MICRO_BATCH_SIZE}"
+    [R1]="${R1_PPO_MICRO_BATCH_SIZE:-$PPO_MICRO_BATCH_SIZE}"
 )
 
 declare -A STAGE_SAVE_FREQ=(
@@ -1381,6 +1392,7 @@ for raw_stage in "${STAGE_ORDER[@]}"; do
         fi
     fi
     echo "Val before train: ${STAGE_VAL_BEFORE_TRAIN[$stage]}"
+    echo "PPO micro-batch size per GPU: ${STAGE_PPO_MICRO_BATCH_SIZE[$stage]}"
     echo "Force answer stop (train): ${FORCE_ANSWER_STOP_TRAIN}"
     echo "Save/Test freq: ${STAGE_SAVE_FREQ[$stage]}/${STAGE_TEST_FREQ[$stage]}"
     echo "Allow existing stage output: $ALLOW_EXISTING_STAGE_OUTPUT"
